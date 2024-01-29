@@ -1,0 +1,145 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+@model ScraperProject.ViewModels.StoresViewModel
+
+<div class="container">
+
+    <div class="row py-4">
+        <div class="col-12 d-flex justify-content-center align-items-center">
+            <!-- Pole wyboru z listy -->
+            <div class="form-group">
+                <label for="storesSelect">Wybierz sklep:</label>
+                <select id="storesSelect" class="form-control">
+                    @foreach (var store in Model.StoresWithLaptops)
+                    {
+                        <option value="@store.Name">@store.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+
+        <div class="col-sm">
+            <form id="addLaptopForm" method="post" asp-action="Add">
+                <div class="form-group">
+                    <label>Nazwa Laptopa</label>
+                    <input type="text" class="form-control" id="laptopName" name="Name" placeholder="Podaj nazwę laptopa">
+                    <small class="form-text text-muted">Nazwa laptopa powinna być taka sama jak nazwa w wybranym sklepie internetowym</small>
+                </div>
+
+                <input type="hidden" id="selectedStore" name="StoreName" value="" />
+
+                <button type="button" class="btn btn-primary" onclick="addLaptop()">Dodaj</button>
+            </form>
+        </div>
+
+        <div class="col-sm">
+            <ul id="laptopsList" class="list-group">
+
+            </ul>
+        </div>
+
+    </div>
+</div>
+
+
+<script>
+    document.getElementById('storesSelect').addEventListener('change', function () {
+        var selectedStore = this.value;
+        handleStoreChange(selectedStore);
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var selectedStore = document.getElementById('storesSelect').value;
+        handleStoreChange(selectedStore);
+    });
+
+    function handleStoreChange(selectedStore) {
+        var storesWithLaptops = @Html.Raw(Json.Serialize(Model.StoresWithLaptops));
+
+        var storeWithLaptops = storesWithLaptops.find(function (laptop) {
+            return laptop.name === selectedStore;
+        });
+
+        var laptops = storeWithLaptops.laptops;
+
+        var laptopsList = $('#laptopsList');
+        laptopsList.html('');
+        var lii = $('<li class="list-group-item"></li>');
+        lii.html('<div class="row">' +
+            '<div class="col-sm-6">Nazwa laptopa</div>' +
+            '<div class="col-sm-3">Cena</div>' +
+            '<div class="col-sm-3"></div>' +
+            '</div>');
+        laptopsList.append(lii);
+
+        laptops.forEach(function (laptop) {
+
+            var li = $('<li class="list-group-item"></li>');
+
+            var laptopPrice = laptop.price + ' zł';
+            if (!laptop.price)
+                laptopPrice = ''
+
+            li.html('<div class="row">' +
+                '<div class="col-sm-6">' + laptop.name + '</div>' +
+                '<div class="col-sm-3">' + laptopPrice + '</div>' +
+                '<div class="col-sm-3"> <button type="button" class="btn btn-danger delete-btn">Usuń</button></div>' +
+                '</div>');
+
+            laptopsList.append(li);
+
+            li.find('.delete-btn').click(function () {
+                handleDeleteClick(laptop);
+            });
+        });
+    }
+
+    function handleDeleteClick(laptop) {
+        fetch('/Home/DeleteLaptop/' + laptop.id, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    console.error('Usuwanie nie powiodło się');
+                }
+            })
+            .catch(error => {
+                console.error('Błąd podczas wysyłania żądania DELETE', error);
+            });
+    }
+
+    function addLaptop() {
+        var laptopName = document.getElementById('laptopName').value;
+        var selectedStore = document.getElementById('storesSelect').value;
+        document.getElementById('selectedStore').value = selectedStore;
+
+        var model = {
+            Name: laptopName,
+            StoreName: selectedStore
+        };
+
+        fetch('/Home/AddLaptop', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(model)
+        })
+            .then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    console.error('Dodawanie nie powiodło się');
+                }
+            })
+    }
+</script>
